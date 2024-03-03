@@ -1,0 +1,7 @@
+# beautifulsoup4
+# distlib
+# filelock
+# greenlet
+# nose
+# nose-cov
+psycopg2-binary

@@ -1,0 +1,48 @@
+name: Build on Push for ARM64
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get aws credential
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Run build script
+        env:
+          LAYER_NAME: "layer-sample"
+          LAYER_DESCRIPTION: "Layer Sample"
+          PYTHON_VERSION: 3.12.2
+          COMPATIBLE_RUNTIME: "python3.12"
+          COMPATIBLE_ARCHITECTURES: "arm64"
+          ZIP_NAME: "layer.zip"
+          LICENSE_INFO: "MIT"
+        run: |
+          chmod 777 python
+          ./build.sh "${PYTHON_VERSION}"
+          zip -r "${{ env.ZIP_NAME }}" python
+          aws s3 cp "${{ env.ZIP_NAME }}" "s3://${{ secrets.AWS_LAMBDA_LAYER_BUCKET_NAME }}/${{ env.ZIP_NAME }}" \
+            --region "${{ secrets.AWS_REGION }}" 
+          aws lambda publish-layer-version \
+            --layer-name "${{ env.LAYER_NAME }}" \
+            --description "${{ env.LAYER_DESCRIPTION }}" \
+            --license-info "${{ env.LICENSE_INFO }}" \
+            --content "S3Bucket=${{ secrets.AWS_LAMBDA_LAYER_BUCKET_NAME }},S3Key=${{ env.ZIP_NAME }}" \
+            --compatible-runtimes "${{ env.COMPATIBLE_RUNTIME }}" \
+            --compatible-architectures "${{ env.COMPATIBLE_ARCHITECTURES }}" \
+            --region "${{ secrets.AWS_REGION }}"
