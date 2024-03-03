@@ -1,6 +1,9 @@
 name: Build on Push for ARM64
 
-on: push
+on:
+  push:
+    paths:
+      - '.github/workflows/sample.yml'
 
 jobs:
   build:
@@ -34,11 +37,15 @@ jobs:
           LICENSE_INFO: "MIT"
         run: |
           chmod 777 python
-          ./build.sh "${PYTHON_VERSION}"
+
+          ./build.sh "${{ env.PYTHON_VERSION }}"
+
           zip -r "${{ env.ZIP_NAME }}" python
+          
           aws s3 cp "${{ env.ZIP_NAME }}" "s3://${{ secrets.AWS_LAMBDA_LAYER_BUCKET_NAME }}/${{ env.ZIP_NAME }}" \
             --region "${{ secrets.AWS_REGION }}" 
-          aws lambda publish-layer-version \
+          
+            aws lambda publish-layer-version \
             --layer-name "${{ env.LAYER_NAME }}" \
             --description "${{ env.LAYER_DESCRIPTION }}" \
             --license-info "${{ env.LICENSE_INFO }}" \
